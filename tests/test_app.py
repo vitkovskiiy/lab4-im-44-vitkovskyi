@@ -53,3 +53,11 @@ def test_run_with_all_steps_writes_every_step_of_the_fall_once():
     app.run("input.txt", all_steps=True)
 
     writer.write.assert_called_once_with("STEP 0\np\n.\n#\nSTEP 1\n.\np\n#\n")
+
+
+def test_run_with_all_steps_writes_only_error_message_when_input_is_invalid():
+    app, _, writer = make_app(text="2 2\n..\n##\n")
+
+    app.run("input.txt", all_steps=True)
+
+    writer.write.assert_called_once_with("Error: invalid input\n")

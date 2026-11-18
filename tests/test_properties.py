@@ -8,7 +8,7 @@ to a minimal example and prints it.
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from tetris.field import Field, Point, drop
+from tetris.field import Field, Point, drop, fall_steps
 
 # derandomize: the same examples on every run, so CI results are reproducible.
 PROPERTY_SETTINGS = settings(max_examples=500, derandomize=True, deadline=None)
@@ -76,3 +76,20 @@ def test_dropped_piece_is_inside_field_and_off_landscape(field):
 def test_dropped_field_is_stable(field):
     final = drop(field)
     assert drop(final) == final
+
+
+@PROPERTY_SETTINGS
+@given(fields())
+def test_fall_steps_start_with_initial_field_and_end_with_dropped_field(field):
+    steps = fall_steps(field)
+    assert steps[0] == field
+    assert steps[-1] == drop(field)
+
+
+@PROPERTY_SETTINGS
+@given(fields())
+def test_each_fall_step_moves_piece_exactly_one_row_down(field):
+    steps = fall_steps(field)
+    for before, after in zip(steps, steps[1:]):
+        assert after.piece == frozenset(Point(p.row + 1, p.col) for p in before.piece)
+        assert after.landscape == before.landscape
