@@ -1,12 +1,14 @@
-# Лабораторна робота №3 — Tetris (Test doubles)
+# Лабораторна робота №4 — Tetris++
 
 - Студент: Іван Вітковський
 - Група: ІМ-44
-- Pull request: https://github.com/vitkovskiiy/lab3-im-44-vitkovskyi/pull/1
-- відео : https://github.com/user-attachments/assets/85ddc8f8-5245-4431-bdbe-42520671a18f
+- Pull request: [PR URL]
+- Демо-відео (необов'язково): [DEMO VIDEO URL]
 
-Програма читає початковий стан екрана гри, схожої на Тетріс (одна «підвішена»
-фігура `p` і «ландшафт» `#`), і виводить стан після того, як фігура впала.
+Продовження лабораторної №3. Програма читає початковий стан екрана гри, схожої
+на Тетріс (одна «підвішена» фігура `p` і «ландшафт» `#`), і виводить стан після
+того, як фігура впала. З параметром `--all-steps` виводить екран на кожному
+кроці падіння (`STEP 0`, `STEP 1`, ...). Без параметра програма працює, як раніше.
 Якщо вхідний файл некоректний або його не вдалося прочитати, програма виводить
 `Error: invalid input` без подробиць.
 
@@ -22,20 +24,34 @@ pip install -r requirements.txt
 pytest
 ```
 
+## Що змінилось порівняно з лабораторною №3
+
+- **Mock'и з бібліотеки.** Власноруч написані `FakeReader` і `RecordingWriter`
+  замінені на `unittest.mock.create_autospec(FileReader)` /
+  `create_autospec(ConsoleWriter)` (`tests/test_app.py`). Autospec будує mock
+  за справжнім класом, тому виклик методу, якого немає, або з неправильними
+  аргументами, валить тест.
+- **Property-based тести з бібліотекою.** Власний генератор полів замінено на
+  стратегію [Hypothesis](https://hypothesis.readthedocs.io/)
+  (`tests/test_properties.py`): ті самі властивості + властивості режиму
+  «усі кроки». Hypothesis сам зменшує поле, на якому тест упав, до мінімального
+  прикладу (shrinking).
+- **Режим «усі кроки».** `fall_steps` (логіка), `render_steps` (формат),
+  `TetrisApp.run(path, all_steps=True)` (комунікаційний шар), прапорець
+  `--all-steps` (CLI).
+- **Покриття коду в PR.** GitHub Actions рахує покриття рядків і гілок
+  (`pytest-cov --cov-branch`) і пише його коментарем у PR, який оновлюється на
+  кожному новому коміті.
+
 ## Шари програми
 
 | Шар | Модуль | Що робить |
 |---|---|---|
-| Логічний | `src/tetris/field.py` | `Point`, `Field`, `step_down` (зсув на 1 рядок), `drop` (падіння до упору) |
-| Логічний | `src/tetris/codec.py` | `parse_field` (текст → поле, перевірка коректності), `render_field` (поле → текст) |
-| Введення/виведення | `src/tetris/io_adapters.py` | `FileReader` (файл), `ConsoleWriter` (стандартний вивід) |
-| Комунікаційний | `src/tetris/app.py` | `TetrisApp(reader, writer)` — DI через конструктор: читає, рахує, виводить |
-| Точка входу | `src/tetris/cli.py` | збирає `TetrisApp` зі справжніми `FileReader` і `ConsoleWriter` |
-
-Комунікаційний шар тестується з власноруч написаними test doubles
-(`tests/fakes.py`: `FakeReader`, `RecordingWriter`), без бібліотек для mock'ів.
-Property-based тести (`tests/test_properties.py`) теж написані без бібліотек:
-власний генератор полів, 6 властивостей, 1000 полів з фіксованим seed.
+| Логічний | `src/tetris/field.py` | `Point`, `Field`, `step_down`, `drop`, `fall_steps` |
+| Логічний | `src/tetris/codec.py` | `parse_field`, `render_field`, `render_steps` |
+| Введення/виведення | `src/tetris/io_adapters.py` | `FileReader`, `ConsoleWriter` |
+| Комунікаційний | `src/tetris/app.py` | `TetrisApp(reader, writer)` — DI через конструктор |
+| Точка входу | `src/tetris/cli.py` | розбирає аргументи, збирає `TetrisApp` зі справжніми класами |
 
 ## Приклад запуску
 
@@ -52,13 +68,11 @@ Property-based тести (`tests/test_properties.py`) теж написані �
 #..#####
 ```
 
-Запуск:
+Тільки фінальний екран:
 
 ```bash
 python -m src.tetris examples/example1.txt
 ```
-
-Вивід:
 
 ```
 ........
@@ -69,8 +83,36 @@ python -m src.tetris examples/example1.txt
 ...#...#
 #..#####
 ```
-Опис, інструкції із запуску та тестування буде додано.
 
+Усі кроки:
 
+```bash
+python -m src.tetris --all-steps examples/example1.txt
+```
 
-
+```
+STEP 0
+..p.....
+.ppp....
+..p.....
+........
+...#....
+...#...#
+#..#####
+STEP 1
+........
+..p.....
+.ppp....
+..p.....
+...#....
+...#...#
+#..#####
+STEP 2
+........
+........
+..p.....
+.ppp....
+..p#....
+...#...#
+#..#####
+```
