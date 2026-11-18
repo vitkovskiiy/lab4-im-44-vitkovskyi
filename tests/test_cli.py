@@ -1,3 +1,6 @@
+import runpy
+import sys
+
 from tetris.cli import main
 
 
@@ -72,3 +75,14 @@ def test_main_prints_error_message_for_two_file_paths(tmp_path, capsys):
     main([str(path), str(path)])
 
     assert capsys.readouterr().out == "Error: invalid input\n"
+
+
+def test_running_package_as_program_prints_dropped_field(tmp_path, capsys, monkeypatch):
+    # Same as "python -m src.tetris input.txt": executes tetris/__main__.py.
+    path = tmp_path / "input.txt"
+    path.write_text("2 1\np\n.\n", encoding="utf-8")
+    monkeypatch.setattr(sys, "argv", ["tetris", str(path)])
+
+    runpy.run_module("tetris", run_name="__main__")
+
+    assert capsys.readouterr().out == ".\np\n"
