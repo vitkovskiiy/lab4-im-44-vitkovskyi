@@ -42,3 +42,7 @@ def render_field(field: Field) -> str:
                 line += "."
         lines.append(line + "\n")
     return "".join(lines)
+
+
+def render_steps(fields: list[Field]) -> str:
+    return "".join(f"STEP {number}\n{render_field(field)}" for number, field in enumerate(fields))
