@@ -9,3 +9,7 @@ venv/
 .agents/
 .claude/
 skills-lock.json
+.hypothesis/
+.coverage
+coverage.json
+coverage.xml
