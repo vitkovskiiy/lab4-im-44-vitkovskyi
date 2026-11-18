@@ -29,4 +29,7 @@ def drop(field: Field) -> Field:
 
 
 def fall_steps(field: Field) -> list[Field]:
-    return [field]
+    steps = [field]
+    while (moved := step_down(steps[-1])) != steps[-1]:
+        steps.append(moved)
+    return steps
