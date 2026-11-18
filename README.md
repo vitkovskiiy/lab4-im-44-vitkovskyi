@@ -2,7 +2,7 @@
 
 - Студент: Іван Вітковський
 - Група: ІМ-44
-- Pull request: [PR URL]
+- Pull request: https://github.com/vitkovskiiy/lab4-im-44-vitkovskyi/pull/1
 - Демо-відео (необов'язково): [DEMO VIDEO URL]
 
 Продовження лабораторної №3. Програма читає початковий стан екрана гри, схожої
