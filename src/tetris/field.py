@@ -26,3 +26,7 @@ def drop(field: Field) -> Field:
     while (moved := step_down(field)) != field:
         field = moved
     return field
+
+
+def fall_steps(field: Field) -> list[Field]:
+    return [field]
