@@ -113,3 +113,19 @@ def test_fall_steps_returns_only_initial_field_when_piece_cannot_move():
     )
 
     assert fall_steps(field) == [field]
+
+
+def test_fall_steps_lists_field_after_every_step_until_piece_rests():
+    field = Field(
+        height=4,
+        width=2,
+        piece=frozenset({Point(0, 0)}),
+        landscape=frozenset({Point(3, 0), Point(3, 1)}),
+    )
+    landscape = frozenset({Point(3, 0), Point(3, 1)})
+
+    assert fall_steps(field) == [
+        Field(4, 2, frozenset({Point(0, 0)}), landscape),
+        Field(4, 2, frozenset({Point(1, 0)}), landscape),
+        Field(4, 2, frozenset({Point(2, 0)}), landscape),
+    ]
