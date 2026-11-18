@@ -45,3 +45,11 @@ def test_run_writes_same_error_message_when_file_cannot_be_read():
     app.run("missing.txt")
 
     writer.write.assert_called_once_with("Error: invalid input\n")
+
+
+def test_run_with_all_steps_writes_every_step_of_the_fall_once():
+    app, _, writer = make_app(text="3 1\np\n.\n#\n")
+
+    app.run("input.txt", all_steps=True)
+
+    writer.write.assert_called_once_with("STEP 0\np\n.\n#\nSTEP 1\n.\np\n#\n")
