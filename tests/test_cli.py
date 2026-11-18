@@ -30,3 +30,12 @@ def test_main_prints_error_message_when_input_file_does_not_exist(tmp_path, caps
     main([str(tmp_path / "missing.txt")])
 
     assert capsys.readouterr().out == "Error: invalid input\n"
+
+
+def test_main_with_all_steps_flag_prints_every_step(tmp_path, capsys):
+    path = tmp_path / "input.txt"
+    path.write_text("3 1\np\n.\n#\n", encoding="utf-8")
+
+    main(["--all-steps", str(path)])
+
+    assert capsys.readouterr().out == "STEP 0\np\n.\n#\nSTEP 1\n.\np\n#\n"
