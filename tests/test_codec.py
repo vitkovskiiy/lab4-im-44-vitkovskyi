@@ -1,6 +1,6 @@
 import pytest
 
-from tetris.codec import parse_field, render_field
+from tetris.codec import parse_field, render_field, render_steps
 from tetris.field import Field, Point
 
 
@@ -98,3 +98,10 @@ def test_parse_field_rejects_row_length_different_from_width(text):
 def test_parse_field_rejects_field_without_piece():
     with pytest.raises(ValueError):
         parse_field("2 2\n..\n##\n")
+
+
+def test_render_steps_prints_numbered_step_header_before_each_field():
+    first = Field(height=2, width=2, piece=frozenset({Point(0, 1)}), landscape=frozenset({Point(1, 0)}))
+    second = Field(height=2, width=2, piece=frozenset({Point(1, 1)}), landscape=frozenset({Point(1, 0)}))
+
+    assert render_steps([first, second]) == "STEP 0\n.p\n#.\nSTEP 1\n..\n#p\n"

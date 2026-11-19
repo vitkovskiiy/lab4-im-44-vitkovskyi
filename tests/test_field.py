@@ -1,4 +1,4 @@
-from tetris.field import Field, Point, drop, step_down
+from tetris.field import Field, Point, drop, fall_steps, step_down
 
 
 def test_step_down_moves_piece_one_row_down_when_space_below_is_free():
@@ -102,3 +102,30 @@ def test_drop_never_changes_size_or_landscape():
     dropped = drop(field)
 
     assert (dropped.height, dropped.width, dropped.landscape) == (4, 3, landscape)
+
+
+def test_fall_steps_returns_only_initial_field_when_piece_cannot_move():
+    field = Field(
+        height=2,
+        width=1,
+        piece=frozenset({Point(0, 0)}),
+        landscape=frozenset({Point(1, 0)}),
+    )
+
+    assert fall_steps(field) == [field]
+
+
+def test_fall_steps_lists_field_after_every_step_until_piece_rests():
+    field = Field(
+        height=4,
+        width=2,
+        piece=frozenset({Point(0, 0)}),
+        landscape=frozenset({Point(3, 0), Point(3, 1)}),
+    )
+    landscape = frozenset({Point(3, 0), Point(3, 1)})
+
+    assert fall_steps(field) == [
+        Field(4, 2, frozenset({Point(0, 0)}), landscape),
+        Field(4, 2, frozenset({Point(1, 0)}), landscape),
+        Field(4, 2, frozenset({Point(2, 0)}), landscape),
+    ]

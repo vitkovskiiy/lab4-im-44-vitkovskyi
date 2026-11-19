@@ -4,6 +4,10 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
 
+permissions:
+  contents: read
+  pull-requests: write
+
 jobs:
   pytest:
     runs-on: ubuntu-latest
@@ -13,4 +17,13 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install -r requirements.txt
-      - run: pytest
+      - run: pytest --cov=tetris --cov-branch --cov-report=term-missing --cov-report=json
+      - name: Build coverage comment
+        env:
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: python .github/scripts/coverage_comment.py coverage.json > coverage-comment.md
+      - name: Post or update coverage comment
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: coverage
+          path: coverage-comment.md

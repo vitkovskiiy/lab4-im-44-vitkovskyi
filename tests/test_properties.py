@@ -1,94 +1,95 @@
-"""Hand-written property-based tests (no property-testing libraries).
+"""Property-based tests with Hypothesis.
 
-A generator builds random valid fields, each property compares the initial
-and the final field, and the loop checks every property on many fields.
-Each case uses its own seed, so a failure can be reproduced from the message.
+The `fields` strategy builds random valid fields; each test checks one
+property of `drop` on many of them. On failure Hypothesis shrinks the field
+to a minimal example and prints it.
 """
 
-import random
+from hypothesis import given, settings
+from hypothesis import strategies as st
 
-import pytest
+from tetris.field import Field, Point, drop, fall_steps
 
-from tetris.codec import render_field
-from tetris.field import Field, Point, drop
-
-BASE_SEED = 20261116
-CASES = 1000
+# derandomize: the same examples on every run, so CI results are reproducible.
+PROPERTY_SETTINGS = settings(max_examples=500, derandomize=True, deadline=None)
 
 
-def generate_field(rng: random.Random) -> Field:
+@st.composite
+def fields(draw) -> Field:
     """Random size, random landscape at the bottom, one piece above it."""
-    height = rng.randint(2, 10)
-    width = rng.randint(1, 10)
-    piece_rows = rng.randint(1, max(1, height // 2))
-    landscape = frozenset(
-        Point(row, col)
-        for row in range(piece_rows, height)
-        for col in range(width)
-        if rng.random() < 0.35
-    )
-    candidates = [Point(row, col) for row in range(piece_rows) for col in range(width)]
-    piece = frozenset(rng.sample(candidates, rng.randint(1, min(4, len(candidates)))))
+    height = draw(st.integers(min_value=2, max_value=10))
+    width = draw(st.integers(min_value=1, max_value=10))
+    piece_rows = draw(st.integers(min_value=1, max_value=max(1, height // 2)))
+    bottom = [Point(row, col) for row in range(piece_rows, height) for col in range(width)]
+    top = [Point(row, col) for row in range(piece_rows) for col in range(width)]
+    landscape = draw(st.frozensets(st.sampled_from(bottom)))
+    piece = draw(st.frozensets(st.sampled_from(top), min_size=1, max_size=4))
     return Field(height, width, piece, landscape)
 
 
-def size_is_unchanged(initial: Field, final: Field) -> None:
-    assert (final.height, final.width) == (initial.height, initial.width), "size changed"
+@PROPERTY_SETTINGS
+@given(fields())
+def test_generated_fields_are_valid(field):
+    assert field.piece
+    assert not field.piece & field.landscape
 
 
-def landscape_is_unchanged(initial: Field, final: Field) -> None:
-    assert final.landscape == initial.landscape, "landscape changed"
+@PROPERTY_SETTINGS
+@given(fields())
+def test_drop_keeps_field_size(field):
+    final = drop(field)
+    assert (final.height, final.width) == (field.height, field.width)
 
 
-def piece_pixel_count_is_unchanged(initial: Field, final: Field) -> None:
-    assert len(final.piece) == len(initial.piece), "piece pixel count changed"
+@PROPERTY_SETTINGS
+@given(fields())
+def test_drop_keeps_landscape(field):
+    assert drop(field).landscape == field.landscape
 
 
-def piece_keeps_shape_and_only_moves_down(initial: Field, final: Field) -> None:
-    shift = min(p.row for p in final.piece) - min(p.row for p in initial.piece)
-    moved = frozenset(Point(p.row + shift, p.col) for p in initial.piece)
-    assert shift >= 0 and final.piece == moved, "piece changed shape or moved sideways/up"
+@PROPERTY_SETTINGS
+@given(fields())
+def test_drop_keeps_piece_pixel_count(field):
+    assert len(drop(field).piece) == len(field.piece)
 
 
-def piece_is_inside_field_and_off_landscape(initial: Field, final: Field) -> None:
+@PROPERTY_SETTINGS
+@given(fields())
+def test_drop_keeps_piece_shape_and_only_moves_it_down(field):
+    final = drop(field)
+    shift = min(p.row for p in final.piece) - min(p.row for p in field.piece)
+    assert shift >= 0
+    assert final.piece == frozenset(Point(p.row + shift, p.col) for p in field.piece)
+
+
+@PROPERTY_SETTINGS
+@given(fields())
+def test_dropped_piece_is_inside_field_and_off_landscape(field):
+    final = drop(field)
     for p in final.piece:
-        assert 0 <= p.row < final.height and 0 <= p.col < final.width, f"{p} is outside the field"
-        assert p not in final.landscape, f"{p} overlaps the landscape"
+        assert 0 <= p.row < final.height and 0 <= p.col < final.width
+        assert p not in final.landscape
 
 
-def final_field_is_stable(initial: Field, final: Field) -> None:
-    assert drop(final) == final, "dropping the final field again changes it"
+@PROPERTY_SETTINGS
+@given(fields())
+def test_dropped_field_is_stable(field):
+    final = drop(field)
+    assert drop(final) == final
 
 
-PROPERTIES = [
-    size_is_unchanged,
-    landscape_is_unchanged,
-    piece_pixel_count_is_unchanged,
-    piece_keeps_shape_and_only_moves_down,
-    piece_is_inside_field_and_off_landscape,
-    final_field_is_stable,
-]
+@PROPERTY_SETTINGS
+@given(fields())
+def test_fall_steps_start_with_initial_field_and_end_with_dropped_field(field):
+    steps = fall_steps(field)
+    assert steps[0] == field
+    assert steps[-1] == drop(field)
 
 
-def test_generator_builds_valid_fields():
-    for case in range(CASES):
-        seed = BASE_SEED + case
-        field = generate_field(random.Random(seed))
-        assert field.piece, f"seed={seed}: empty piece"
-        assert not field.piece & field.landscape, f"seed={seed}: piece overlaps landscape"
-
-
-@pytest.mark.parametrize("prop", PROPERTIES, ids=lambda prop: prop.__name__)
-def test_property_holds_for_random_fields(prop):
-    for case in range(CASES):
-        seed = BASE_SEED + case
-        initial = generate_field(random.Random(seed))
-        final = drop(initial)
-        try:
-            prop(initial, final)
-        except AssertionError as error:
-            pytest.fail(
-                f"{prop.__name__} failed for seed={seed}: {error}\n"
-                f"initial field ({initial.height}x{initial.width}):\n{render_field(initial)}"
-                f"final field:\n{render_field(final)}"
-            )
+@PROPERTY_SETTINGS
+@given(fields())
+def test_each_fall_step_moves_piece_exactly_one_row_down(field):
+    steps = fall_steps(field)
+    for before, after in zip(steps, steps[1:]):
+        assert after.piece == frozenset(Point(p.row + 1, p.col) for p in before.piece)
+        assert after.landscape == before.landscape
